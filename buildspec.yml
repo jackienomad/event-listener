@@ -1,0 +1,70 @@
+version: 0.2
+env:
+  parameter-store:
+    # MORALIS_API_KEY: "/aiskins/event/listener/moralis/apikey"
+    PORT: "/aiskins/event/listener/port"
+    # MASTER_KEY: "/aiskins/event/listener/master-key"
+    APPLICATION_ID: "/aiskins/event/listener/application-id"
+    SERVER_URL: "/aiskins/event/listener/server-url"
+    SERVER_NAME: "/aiskins/event/listener/server-name"
+    CLOUD_PATH: "/aiskins/event/listener/cloud-path"
+    # DATABASE_URI: "/aiskins/event/listener/database-uri"
+    REDIS_CONNECTION_STRING: "/aiskins/event/listener/redis-connection-string"
+    RATE_LIMIT_TTL: "/aiskins/event/listener/rate/limit/ttl"
+    RATE_LIMIT_AUTHENTICATED: "/aiskins/event/listener/rate/limit/authenticated"
+    RATE_LIMIT_ANONYMOUS: "/aiskins/event/listener/rate/limit/anonymous"
+    USE_STREAMS: "/aiskins/event/listener/use-streams"
+    STREAMS_WEBHOOK_URL: "/aiskins/event/listener/streams-webhook-url"
+    AISKINS_FACTORY_ADDRESS: "/aiskins/event/listener/aiskinsfactoryaddress"
+    AISKINS_MASTER_COLLECTION_ADDRESS: "/aiskins/event/listener/aiskinsmastercollectionaddress"
+    ENV: "/aiskins/event/listener/env"
+    # STREAM_ID: "/aiskins/event/listener/stream/id"
+    EVM_CHAIN: "/aiskins/event/listener/evm/chain"
+  secrets-manager:
+    STREAM_ID: aiskins/event/listener/stream/id
+    DATABASE_URI: aiskins/mongo/database-uri
+    MASTER_KEY: aiskins/event/listener/master-key
+    MORALIS_API_KEY: aiskins/event/listener/moralis/apikey
+phases:
+  install:
+    runtime-versions:
+      docker: 18
+  pre_build:
+    commands:
+      - echo Logging in to Amazon ECR...
+      - $(aws ecr get-login --region $AWS_DEFAULT_REGION --no-include-email)
+      - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+  build:
+    commands:
+      - echo Build started on `date`
+      - echo Building the Docker image...
+      - echo "PORT=$PORT" >> .env
+      - echo "REGION=ap-southeast-1" >> .env
+      - echo "MORALIS_API_KEY=$MORALIS_API_KEY" >> .env
+      - echo "MASTER_KEY=$MASTER_KEY" >> .env
+      - echo "APPLICATION_ID=$APPLICATION_ID" >> .env
+      - echo "SERVER_URL=$SERVER_URL" >> .env
+      - echo "SERVER_NAME=$SERVER_NAME" >> .env
+      - echo "CLOUD_PATH=$CLOUD_PATH" >> .env
+      - echo "DATABASE_URI=$DATABASE_URI" >> .env
+      - echo "REDIS_CONNECTION_STRING=$REDIS_CONNECTION_STRING" >> .env
+      - echo "RATE_LIMIT_TTL=$RATE_LIMIT_TTL" >> .env
+      - echo "RATE_LIMIT_AUTHENTICATED=$RATE_LIMIT_AUTHENTICATED" >> .env
+      - echo "RATE_LIMIT_ANONYMOUS=$RATE_LIMIT_ANONYMOUS" >> .env
+      - echo "USE_STREAMS=$USE_STREAMS" >> .env
+      - echo "STREAMS_WEBHOOK_URL=$STREAMS_WEBHOOK_URL" >> .env
+      - echo "AISKINS_FACTORY_ADDRESS=$AISKINS_FACTORY_ADDRESS" >> .env
+      - echo "AISKINS_MASTER_COLLECTION_ADDRESS=$AISKINS_MASTER_COLLECTION_ADDRESS" >> .env
+      - echo "ENV=$ENV" >> .env
+      - echo "STREAM_ID=$STREAM_ID" >> .env
+      - echo "EVM_CHAIN=$EVM_CHAIN" >> .env
+
+      - docker build -t $REPOSITORY_URI:$COMMIT_HASH .
+  post_build:
+    commands:
+      - echo Build completed on `date`
+      - echo Pushing the Docker image...
+      - docker push $REPOSITORY_URI:$COMMIT_HASH
+      - printf '[{"name":"%s","imageUri":"%s"}]' $CONTAINER_NAME $REPOSITORY_URI:$COMMIT_HASH > imagedefinitions.json
+artifacts:
+    files: imagedefinitions.json
